@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>عقار — البحث الصوتي الذكي</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <script>
+    // Configure Tailwind CSS with Arabic-friendly typography and custom brand palette
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Tajawal', 'Inter', 'system-ui', 'sans-serif']
+          },
+          colors: {
+            aqar: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Pulse animation when microphone speech recognition is actively listening */
+    @keyframes micPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45);
+      }
+      70% {
+        box-shadow: 0 0 0 14px rgba(225, 29, 72, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+      }
+    }
+    .mic-active {
+      animation: micPulse 1.25s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+  <!-- Top Navigation Header -->
+  <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-aqar-600 text-white font-extrabold text-lg flex items-center justify-center shadow-sm">
+          ع
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-extrabold text-slate-900">عقار — البحث الصوتي الذكي</h1>
+          <p class="text-xs text-slate-500">نموذج تفاعلي لتحويل الطلب الصوتي أو النصي إلى فلاتر بحث فورية</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="toggle-tech-btn"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+        >
+          عرض للتقنيين
+        </button>
+        <button
+          id="reset-btn"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+        >
+          إعادة ضبط
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-5">
+    <!-- Internal Technical View (Hidden by default from end users) -->
+    <section
+      id="tech-panel"
+      aria-label="لوحة التقنيين الداخلية"
+      class="hidden bg-slate-900 text-slate-100 rounded-2xl p-5 sm:p-6 shadow-md border border-slate-800 space-y-5"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div>
+          <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-aqar-600/20 text-emerald-300 border border-emerald-500/30 mb-1.5">
+            لوحة المؤشرات الداخلية للتقنيين
+          </span>
+          <h2 class="text-base sm:text-lg font-extrabold text-white">
+            مقارنة الأداء وخط أنابيب استخراج الفلاتر (AI Voice-to-Filter)
+          </h2>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            id="mode-voice-btn"
+            type="button"
+            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-aqar-600 text-white hover:bg-aqar-700 transition cursor-pointer"
+          >
+            البحث الصوتي الذكي
+          </button>
+          <button
+            id="mode-manual-btn"
+            type="button"
+            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
+          >
+            البحث اليدوي التقليدي
+          </button>
+          <button
+            id="copy-pitch-btn"
+            type="button"
+            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 text-white hover:bg-sky-700 transition cursor-pointer"
+          >
+            نسخ ملخص المقترح
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Performance Metrics -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400">عدد النقرات والتفاعلات</div>
+          <div id="metric-clicks" class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-1">0</div>
+        </div>
+        <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400">الوقت المستغرق</div>
+          <div id="metric-time" class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-1">0.0 ثانية</div>
+        </div>
+        <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400">الفلاتر المستخرجة</div>
+          <div id="metric-filters" class="text-xl sm:text-2xl font-extrabold text-sky-400 mt-1">0</div>
+        </div>
+        <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5">
+          <div class="text-xs text-slate-400">الوضع النشط</div>
+          <div id="metric-mode" class="text-base sm:text-lg font-extrabold text-white mt-1.5">صوتي ذكي</div>
+        </div>
+      </div>
+
+      <!-- Extraction Pipeline Steps -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-3.5 text-xs sm:text-sm">
+          <div class="font-bold text-emerald-300 mb-1">1. تحويل الصوت إلى نص (Speech-to-Text)</div>
+          <p id="pipe-stt" class="text-slate-300">في انتظار الإدخال الصوتي أو النصي.</p>
+        </div>
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-3.5 text-xs sm:text-sm">
+          <div class="font-bold text-sky-300 mb-1">2. استخراج الفلاتر (Intent & Entity Extraction)</div>
+          <p id="pipe-intent" class="text-slate-300">لم يتم استخراج فلاتر بعد.</p>
+        </div>
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-3.5 text-xs sm:text-sm">
+          <div class="font-bold text-amber-300 mb-1">3. تطبيق الاستعلام (Query Filtering)</div>
+          <p id="pipe-query" class="text-slate-300">عرض جميع العقارات المتاحة.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Primary User Search Card -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+      <!-- Voice & Natural Query Search -->
+      <div id="voice-section" class="space-y-4">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button
+            id="mic-btn"
+            type="button"
+            aria-label="بدء البحث الصوتي"
+            title="اضغط للتحدث"
+            class="w-14 h-14 sm:w-12 sm:h-12 rounded-full bg-aqar-600 hover:bg-aqar-700 text-white text-xl flex items-center justify-center shrink-0 mx-auto sm:mx-0 shadow-sm transition cursor-pointer"
+          >
+            🎤
+          </button>
+          <input
+            id="voice-input"
+            type="text"
+            placeholder="تحدث أو اكتب طلبك، مثل: أريد شقة للإيجار في حي النرجس بالرياض ثلاث غرف بسعر لا يتجاوز 45 ألف"
+            class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-aqar-600 focus:ring-2 focus:ring-aqar-600/15 transition"
+          />
+          <button
+            id="apply-voice-btn"
+            type="button"
+            class="px-5 py-3 rounded-xl bg-aqar-600 hover:bg-aqar-700 text-white text-sm font-bold shrink-0 shadow-sm transition cursor-pointer"
+          >
+            بحث ذكي
+          </button>
+        </div>
+
+        <p id="voice-status" class="text-xs sm:text-sm text-slate-500">
+          اضغط على زر الميكروفون للتحدث باللغة العربية، أو اختر أحد الأمثلة الجاهزة أدناه للتجربة الفورية.
+        </p>
+
+        <!-- Quick Sample Queries -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <span class="text-xs font-bold text-slate-500">أمثلة سريعة:</span>
+          <button
+            type="button"
+            data-query="أريد شقة للإيجار في حي النرجس بالرياض ثلاث غرف بسعر لا يتجاوز 45 ألف"
+            class="sample-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-aqar-50 text-aqar-800 border border-aqar-100 hover:bg-aqar-100 transition cursor-pointer"
+          >
+            شقة للإيجار في النرجس • 3 غرف • حتى 45 ألف
+          </button>
+          <button
+            type="button"
+            data-query="فيلا للبيع في حي الملقا بالرياض بأربع غرف"
+            class="sample-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-aqar-50 text-aqar-800 border border-aqar-100 hover:bg-aqar-100 transition cursor-pointer"
+          >
+            فيلا للبيع في الملقا • 4 غرف
+          </button>
+          <button
+            type="button"
+            data-query="شقة للإيجار في حي الروضة بجدة غرفتين بسعر لا يتجاوز 35 ألف"
+            class="sample-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-aqar-50 text-aqar-800 border border-aqar-100 hover:bg-aqar-100 transition cursor-pointer"
+          >
+            شقة للإيجار في الروضة بجدة • غرفتين
+          </button>
+        </div>
+
+        <!-- Cumulative Follow-up Refinement on Active Results -->
+        <div class="pt-3 border-t border-dashed border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <input
+            id="followup-input"
+            type="text"
+            placeholder="تعديل إضافي على النتائج الحالية، مثل: اجعلها دور أرضي أو قلل السعر إلى 40 ألف"
+            class="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-aqar-600 focus:ring-2 focus:ring-aqar-600/15 transition"
+          />
+          <button
+            id="followup-btn"
+            type="button"
+            class="px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold shrink-0 transition cursor-pointer"
+          >
+            تطبيق التعديل
+          </button>
+        </div>
+      </div>
+
+      <!-- Traditional Manual Search Section (For Side-by-Side Comparison in Tech View) -->
+      <div id="manual-section" class="hidden space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm sm:text-base font-extrabold text-slate-800">البحث اليدوي التقليدي عبر الفلاتر</h2>
+          <span class="text-xs text-slate-500">يتم تحديث النتائج مباشرة عند تغيير أي حقل</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <select id="f-city" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+            <option value="">كل المدن</option>
+            <option value="الرياض">الرياض</option>
+            <option value="جدة">جدة</option>
+          </select>
+          <select id="f-type" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+            <option value="">كل أنواع العقار</option>
+            <option value="شقة">شقة</option>
+            <option value="فيلا">فيلا</option>
+          </select>
+          <select id="f-purpose" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+            <option value="">إيجار وبيع</option>
+            <option value="إيجار">إيجار</option>
+            <option value="بيع">بيع</option>
+          </select>
+          <select id="f-rooms" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+            <option value="">أي عدد غرف</option>
+            <option value="2">2 غرف</option>
+            <option value="3">3 غرف</option>
+            <option value="4">4 غرف</option>
+          </select>
+          <input
+            id="f-max-price"
+            type="number"
+            min="0"
+            placeholder="الحد الأقصى للسعر"
+            class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white"
+          />
+          <label class="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-50 cursor-pointer">
+            <input id="f-ground" type="checkbox" class="rounded accent-aqar-600" />
+            <span>دور أرضي فقط</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Active Filter Chips -->
+      <div id="active-filters" class="flex flex-wrap gap-2"></div>
+    </section>
+
+    <!-- Property Listings Results -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 id="results-count" class="text-base sm:text-lg font-extrabold text-slate-900">العقارات المتاحة</h2>
+      </div>
+      <div id="listings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+  </main>
+
+  <!-- Floating Notification Banner (Non-blocking alternative to alert) -->
+  <div
+    id="toast"
+    role="status"
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 z-50"
+  ></div>
+
+  <script>
+    /**
+     * Sample property dataset used for interactive search and filter simulation.
+     */
+    const LISTINGS = [
+      {
+        id: 1,
+        title: "شقة مودرن بمدخل مستقل",
+        city: "الرياض",
+        district: "النرجس",
+        type: "شقة",
+        purpose: "إيجار",
+        rooms: 3,
+        price: 42000,
+        unit: "سنوياً",
+        ground: true,
+        tags: ["دور أرضي", "مدخل مستقل", "قريبة من الخدمات"]
+      },
+      {
+        id: 2,
+        title: "شقة شرحة بإطلالة جميلة",
+        city: "الرياض",
+        district: "النرجس",
+        type: "شقة",
+        purpose: "إيجار",
+        rooms: 3,
+        price: 48000,
+        unit: "سنوياً",
+        ground: false,
+        tags: ["مصعد", "موقف خاص", "تشطيب حديث"]
+      },
+      {
+        id: 3,
+        title: "شقة عملية في موقع هادئ",
+        city: "الرياض",
+        district: "النرجس",
+        type: "شقة",
+        purpose: "إيجار",
+        rooms: 3,
+        price: 39000,
+        unit: "سنوياً",
+        ground: true,
+        tags: ["دور أرضي", "سعر مناسب", "هادئة"]
+      },
+      {
+        id: 4,
+        title: "فيلا سكنية بتصميم عصري",
+        city: "الرياض",
+        district: "الملقا",
+        type: "فيلا",
+        purpose: "بيع",
+        rooms: 4,
+        price: 2450000,
+        unit: "للبيع",
+        ground: true,
+        tags: ["4 غرف", "ملحق خارجي", "حي الملقا"]
+      },
+      {
+        id: 5,
+        title: "شقة قريبة من المحاور الرئيسية",
+        city: "جدة",
+        district: "الروضة",
+        type: "شقة",
+        purpose: "إيجار",
+        rooms: 2,
+        price: 32000,
+        unit: "سنوياً",
+        ground: false,
+        tags: ["غرفتين", "حي الروضة", "موقف مظلل"]
+      },
+      {
+        id: 6,
+        title: "فيلا عائلية واسعة",
+        city: "الرياض",
+        district: "النرجس",
+        type: "فيلا",
+        purpose: "بيع",
+        rooms: 4,
+        price: 2100000,
+        unit: "للبيع",
+        ground: true,
+        tags: ["4 غرف", "فناء واسع", "حي النرجس"]
+      }
+    ];
+
+    /**
+     * Centralized application state for filters, metrics, and active mode.
+     */
+    const state = {
+      city: "",
+      district: "",
+      type: "",
+      purpose: "",
+      rooms: null,
+      maxPrice: null,
+      groundOnly: false,
+      clicks: 0,
+      startTime: null,
+      timerId: null,
+      mode: "voice"
+    };
+
+    // Cache DOM references
+    const el = {
+      techPanel: document.getElementById("tech-panel"),
+      toggleTechBtn: document.getElementById("toggle-tech-btn"),
+      modeVoiceBtn: document.getElementById("mode-voice-btn"),
+      modeManualBtn: document.getElementById("mode-manual-btn"),
+      voiceSection: document.getElementById("voice-section"),
+      manualSection: document.getElementById("manual-section"),
+      micBtn: document.getElementById("mic-btn"),
+      voiceInput: document.getElementById("voice-input"),
+      applyVoiceBtn: document.getElementById("apply-voice-btn"),
+      voiceStatus: document.getElementById("voice-status"),
+      followupInput: document.getElementById("followup-input"),
+      followupBtn: document.getElementById("followup-btn"),
+      activeFilters: document.getElementById("active-filters"),
+      listingsGrid: document.getElementById("listings-grid"),
+      resultsCount: document.getElementById("results-count"),
+      metricClicks: document.getElementById("metric-clicks"),
+      metricTime: document.getElementById("metric-time"),
+      metricFilters: document.getElementById("metric-filters"),
+      metricMode: document.getElementById("metric-mode"),
+      pipeStt: document.getElementById("pipe-stt"),
+      pipeIntent: document.getElementById("pipe-intent"),
+      pipeQuery: document.getElementById("pipe-query"),
+      resetBtn: document.getElementById("reset-btn"),
+      copyPitchBtn: document.getElementById("copy-pitch-btn"),
+      toast: document.getElementById("toast"),
+      fCity: document.getElementById("f-city"),
+      fType: document.getElementById("f-type"),
+      fPurpose: document.getElementById("f-purpose"),
+      fRooms: document.getElementById("f-rooms"),
+      fMaxPrice: document.getElementById("f-max-price"),
+      fGround: document.getElementById("f-ground")
+    };
+
+    /**
+     * Displays a brief toast notification without blocking UI threads.
+     */
+    function showToast(message) {
+      el.toast.textContent = message;
+      el.toast.classList.remove("opacity-0");
+      el.toast.classList.add("opacity-100");
+      clearTimeout(showToast._timeout);
+      showToast._timeout = setTimeout(() => {
+        el.toast.classList.remove("opacity-100");
+        el.toast.classList.add("opacity-0");
+      }, 2400);
+    }
+
+    /**
+     * Increments interaction counter and starts/updates elapsed timer for technical comparison.
+     */
+    function registerInteraction(isNewSearch = false) {
+      state.clicks += 1;
+      if (isNewSearch || !state.startTime) {
+        state.startTime = Date.now();
+      }
+      if (!state.timerId) {
+        state.timerId = setInterval(() => {
+          if (state.startTime) {
+            const elapsed = ((Date.now() - state.startTime) / 1000).toFixed(1);
+            el.metricTime.textContent = `${elapsed} ثانية`;
+          }
+        }, 200);
+      }
+      updateMetrics();
+    }
+
+    /**
+     * Extracts room count from Modern Standard Arabic text or digits.
+     */
+    function parseRooms(text) {
+      const wordMap = {
+        "غرفة واحدة": 1,
+        "واحدة": 1,
+        "غرفتين": 2,
+        "اثنتين": 2,
+        "ثلاث": 3,
+        "ثلاثة": 3,
+        "أربع": 4,
+        "أربعة": 4,
+        "خمس": 5,
+        "خمسة": 5
+      };
+      for (const [word, count] of Object.entries(wordMap)) {
+        if (text.includes(word)) return count;
+      }
+      const digitMatch = text.match(/(\d+)\s*غرف/);
+      return digitMatch ? parseInt(digitMatch[1], 10) : null;
+    }
+
+    /**
+     * Extracts maximum price constraint in SAR from Arabic text.
+     */
+    function parseMaxPrice(text) {
+      const explicitMatch = text.match(/(?:لا يتجاوز|أقل من|تحت|بحدود|سعرها|إلى)\s*(\d+)\s*ألف/);
+      if (explicitMatch) {
+        return parseInt(explicitMatch[1], 10) * 1000;
+      }
+      const thousandMatch = text.match(/(\d+)\s*ألف/);
+      if (thousandMatch && (text.includes("سعر") || text.includes("يتجاوز") || text.includes("أقل") || text.includes("قلل"))) {
+        return parseInt(thousandMatch[1], 10) * 1000;
+      }
+      return null;
+    }
+
+    /**
+     * Parses natural language query or follow-up refinement and updates filter state.
+     */
+    function applyNaturalQuery(rawText, isFollowup = false) {
+      try {
+        const clean = (rawText || "").trim();
+        if (!clean) return;
+
+        if (!isFollowup) {
+          state.city = "";
+          state.district = "";
+          state.type = "";
+          state.purpose = "";
+          state.rooms = null;
+          state.maxPrice = null;
+          state.groundOnly = false;
+        }
+
+        if (clean.includes("الرياض")) state.city = "الرياض";
+        if (clean.includes("جدة")) state.city = "جدة";
+
+        if (clean.includes("النرجس")) {
+          state.district = "النرجس";
+          if (!state.city) state.city = "الرياض";
+        }
+        if (clean.includes("الملقا")) {
+          state.district = "الملقا";
+          if (!state.city) state.city = "الرياض";
+        }
+        if (clean.includes("الروضة")) {
+          state.district = "الروضة";
+          if (!state.city) state.city = "جدة";
+        }
+
+        if (clean.includes("شقة")) state.type = "شقة";
+        if (clean.includes("فيلا")) state.type = "فيلا";
+
+        if (clean.includes("إيجار") || clean.includes("للإيجار")) state.purpose = "إيجار";
+        if (clean.includes("بيع") || clean.includes("للبيع")) state.purpose = "بيع";
+
+        const parsedRooms = parseRooms(clean);
+        if (parsedRooms !== null) state.rooms = parsedRooms;
+
+        const parsedPrice = parseMaxPrice(clean);
+        if (parsedPrice !== null) state.maxPrice = parsedPrice;
+
+        if (clean.includes("أرضي") || clean.includes("ارضي")) {
+          state.groundOnly = true;
+        }
+
+        el.pipeStt.textContent = `"${clean}"`;
+        renderAll();
+      } catch (error) {
+        el.voiceStatus.textContent = "تعذر معالجة الطلب الحالي، يرجى المحاولة مرة أخرى.";
+      }
+    }
+
+    /**
+     * Filters sample listings according to current state criteria.
+     */
+    function getFilteredListings() {
+      return LISTINGS.filter((item) => {
+        if (state.city && item.city !== state.city) return false;
+        if (state.district && item.district !== state.district) return false;
+        if (state.type && item.type !== state.type) return false;
+        if (state.purpose && item.purpose !== state.purpose) return false;
+        if (state.rooms && item.rooms !== state.rooms) return false;
+        if (state.maxPrice && item.price > state.maxPrice) return false;
+        if (state.groundOnly && !item.ground) return false;
+        return true;
+      });
+    }
+
+    /**
+     * Renders active filter chips with individual removal controls.
+     */
+    function renderActiveFilters() {
+      const pills = [];
+      if (state.city) pills.push({ key: "city", label: `المدينة: ${state.city}` });
+      if (state.district) pills.push({ key: "district", label: `الحي: ${state.district}` });
+      if (state.type) pills.push({ key: "type", label: `النوع: ${state.type}` });
+      if (state.purpose) pills.push({ key: "purpose", label: `الغرض: ${state.purpose}` });
+      if (state.rooms) pills.push({ key: "rooms", label: `عدد الغرف: ${state.rooms}` });
+      if (state.maxPrice) {
+        pills.push({ key: "maxPrice", label: `الحد الأقصى للسعر: ${state.maxPrice.toLocaleString("en-US")} ر.س` });
+      }
+      if (state.groundOnly) pills.push({ key: "groundOnly", label: "دور أرضي" });
+
+      el.activeFilters.innerHTML = "";
+      pills.forEach((pill) => {
+        const badge = document.createElement("span");
+        badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = pill.label;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.setAttribute("aria-label", `إزالة ${pill.label}`);
+        removeBtn.className = "text-sky-700 hover:text-rose-600 font-bold leading-none cursor-pointer";
+        removeBtn.textContent = "×";
+        removeBtn.addEventListener("click", () => {
+          registerInteraction(false);
+          if (pill.key === "rooms" || pill.key === "maxPrice") {
+            state[pill.key] = null;
+          } else if (pill.key === "groundOnly") {
+            state.groundOnly = false;
+          } else {
+            state[pill.key] = "";
+          }
+          renderAll();
+        });
+
+        badge.appendChild(labelSpan);
+        badge.appendChild(removeBtn);
+        el.activeFilters.appendChild(badge);
+      });
+
+      el.metricFilters.textContent = String(pills.length);
+      el.pipeIntent.textContent = pills.length
+        ? pills.map((p) => p.label).join(" • ")
+        : "لم يتم استخراج فلاتر بعد.";
+    }
+
+    /**
+     * Renders matching property cards into the catalog grid.
+     */
+    function renderListings() {
+      const filtered = getFilteredListings();
+      el.resultsCount.textContent = `العقارات المتاحة (${filtered.length})`;
+      el.pipeQuery.textContent = `تمت تصفية ${LISTINGS.length} عقارات إلى ${filtered.length} نتيجة مطابقة.`;
+
+      if (!filtered.length) {
+        el.listingsGrid.innerHTML = `
+          <div class="col-span-full bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-500">
+            لا توجد عقارات مطابقة للفلاتر الحالية. جرّب إزالة أحد الفلاتر أو تعديل الحد الأقصى للسعر.
+          </div>
+        `;
+        return;
+      }
+
+      el.listingsGrid.innerHTML = filtered
+        .map(
+          (item) => `
+          <article class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs flex flex-col hover:border-aqar-600/50 transition">
+            <div class="h-32 bg-gradient-to-l from-aqar-700 to-sky-700 text-white p-4 flex flex-col justify-between">
+              <span class="self-start text-xs font-bold px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-2xs">
+                ${item.type} • ${item.purpose}
+              </span>
+              <div class="text-lg sm:text-xl font-extrabold">
+                ${item.price.toLocaleString("en-US")} ر.س
+                <span class="text-xs font-normal opacity-90">${item.unit}</span>
+              </div>
+            </div>
+            <div class="p-4 flex-1 flex flex-col gap-2">
+              <h3 class="text-sm sm:text-base font-extrabold text-slate-900">${item.title}</h3>
+              <p class="text-xs sm:text-sm text-slate-500">${item.city} — حي ${item.district} • ${item.rooms} غرف</p>
+              <div class="flex flex-wrap gap-1.5 pt-2 mt-auto">
+                ${item.tags
+                  .map(
+                    (tag) =>
+                      `<span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">${tag}</span>`
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </article>
+        `
+        )
+        .join("");
+    }
+
+    /**
+     * Updates technical metric cards.
+     */
+    function updateMetrics() {
+      el.metricClicks.textContent = String(state.clicks);
+      el.metricMode.textContent = state.mode === "voice" ? "صوتي ذكي" : "يدوي تقليدي";
+    }
+
+    /**
+     * Synchronizes manual filter controls with current state.
+     */
+    function syncManualControls() {
+      el.fCity.value = state.city;
+      el.fType.value = state.type;
+      el.fPurpose.value = state.purpose;
+      el.fRooms.value = state.rooms ? String(state.rooms) : "";
+      el.fMaxPrice.value = state.maxPrice ? String(state.maxPrice) : "";
+      el.fGround.checked = state.groundOnly;
+    }
+
+    /**
+     * Re-renders filters, listings, manual inputs, and metrics.
+     */
+    function renderAll() {
+      renderActiveFilters();
+      renderListings();
+      syncManualControls();
+      updateMetrics();
+    }
+
+    // Initialize Web Speech API for Arabic voice input when supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "ar-SA";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        el.micBtn.classList.add("mic-active", "!bg-rose-600");
+        el.voiceStatus.textContent = "جاري الاستماع... تحدث الآن بوضوح.";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        el.voiceInput.value = transcript;
+        el.voiceStatus.textContent = `تم التقاط الصوت: "${transcript}"`;
+        registerInteraction(true);
+        applyNaturalQuery(transcript, false);
+      };
+
+      recognition.onerror = () => {
+        el.voiceStatus.textContent = "تعذر التقاط الصوت من المتصفح. يمكنك كتابة طلبك أو تجربة الأمثلة الجاهزة.";
+      };
+
+      recognition.onend = () => {
+        el.micBtn.classList.remove("mic-active", "!bg-rose-600");
+      };
+    }
+
+    // Event Listeners
+    el.micBtn.addEventListener("click", () => {
+      if (!recognition) {
+        el.voiceStatus.textContent = "المتصفح الحالي لا يدعم الإدخال الصوتي المباشر، يمكنك الكتابة أو استخدام الأمثلة الجاهزة.";
+        return;
+      }
+      try {
+        recognition.start();
+      } catch (err) {
+        el.voiceStatus.textContent = "يرجى المحاولة مرة أخرى بعد لحظات.";
+      }
+    });
+
+    el.applyVoiceBtn.addEventListener("click", () => {
+      registerInteraction(true);
+      applyNaturalQuery(el.voiceInput.value, false);
+    });
+
+    el.voiceInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        registerInteraction(true);
+        applyNaturalQuery(el.voiceInput.value, false);
+      }
+    });
+
+    el.followupBtn.addEventListener("click", () => {
+      const value = el.followupInput.value.trim();
+      if (!value) return;
+      registerInteraction(false);
+      applyNaturalQuery(value, true);
+      el.followupInput.value = "";
+    });
+
+    el.followupInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const value = el.followupInput.value.trim();
+        if (!value) return;
+        registerInteraction(false);
+        applyNaturalQuery(value, true);
+        el.followupInput.value = "";
+      }
+    });
+
+    document.querySelectorAll(".sample-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const query = btn.getAttribute("data-query") || "";
+        el.voiceInput.value = query;
+        el.voiceStatus.textContent = `تم تطبيق المثال: "${query}"`;
+        registerInteraction(true);
+        applyNaturalQuery(query, false);
+      });
+    });
+
+    el.toggleTechBtn.addEventListener("click", () => {
+      const isHidden = el.techPanel.classList.toggle("hidden");
+      const isVisible = !isHidden;
+      el.toggleTechBtn.textContent = isVisible ? "إخفاء عرض التقنيين" : "عرض للتقنيين";
+      el.toggleTechBtn.classList.toggle("bg-slate-900", isVisible);
+      el.toggleTechBtn.classList.toggle("text-white", isVisible);
+      el.toggleTechBtn.classList.toggle("border-slate-900", isVisible);
+    });
+
+    el.modeVoiceBtn.addEventListener("click", () => {
+      state.mode = "voice";
+      state.startTime = Date.now();
+      el.voiceSection.classList.remove("hidden");
+      el.manualSection.classList.add("hidden");
+      el.modeVoiceBtn.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-aqar-600 text-white hover:bg-aqar-700 transition cursor-pointer";
+      el.modeManualBtn.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition cursor-pointer";
+      updateMetrics();
+    });
+
+    el.modeManualBtn.addEventListener("click", () => {
+      state.mode = "manual";
+      state.startTime = Date.now();
+      el.voiceSection.classList.add("hidden");
+      el.manualSection.classList.remove("hidden");
+      el.modeManualBtn.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-aqar-600 text-white hover:bg-aqar-700 transition cursor-pointer";
+      el.modeVoiceBtn.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 transition cursor-pointer";
+      registerInteraction(true);
+      updateMetrics();
+    });
+
+    [el.fCity, el.fType, el.fPurpose, el.fRooms, el.fMaxPrice, el.fGround].forEach((input) => {
+      input.addEventListener("change", () => {
+        registerInteraction(false);
+        state.city = el.fCity.value;
+        state.district = "";
+        state.type = el.fType.value;
+        state.purpose = el.fPurpose.value;
+        state.rooms = el.fRooms.value ? parseInt(el.fRooms.value, 10) : null;
+        state.maxPrice = el.fMaxPrice.value ? parseInt(el.fMaxPrice.value, 10) : null;
+        state.groundOnly = el.fGround.checked;
+        renderActiveFilters();
+        renderListings();
+        updateMetrics();
+      });
+    });
+
+    el.resetBtn.addEventListener("click", () => {
+      state.city = "";
+      state.district = "";
+      state.type = "";
+      state.purpose = "";
+      state.rooms = null;
+      state.maxPrice = null;
+      state.groundOnly = false;
+      state.clicks = 0;
+      state.startTime = null;
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+      el.voiceInput.value = "";
+      el.followupInput.value = "";
+      el.voiceStatus.textContent = "تمت إعادة ضبط البحث والفلاتر.";
+      el.pipeStt.textContent = "في انتظار الإدخال الصوتي أو النصي.";
+      el.pipeQuery.textContent = "عرض جميع العقارات المتاحة.";
+      el.metricTime.textContent = "0.0 ثانية";
+      renderAll();
+    });
+
+    el.copyPitchBtn.addEventListener("click", () => {
+      const summary = [
+        "مقترح ميزة: البحث الصوتي الذكي في تطبيق عقار (AI Voice-to-Filter)",
+        "الفكرة: تمكين المستخدم من نطق طلبه أو كتابته بشكل طبيعي ليقوم النظام باستخراج الفلاتر وتحديث النتائج فوراً دون ضبط الفلاتر يدوياً خطوة بخطوة، مع دعم التعديل التراكمي على النتائج الحالية."
+      ].join("\n");
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(summary).then(() => showToast("تم نسخ ملخص المقترح"));
+        return;
+      }
+
+      const tempArea = document.createElement("textarea");
+      tempArea.value = summary;
+      tempArea.setAttribute("readonly", "");
+      tempArea.style.position = "absolute";
+      tempArea.style.left = "-9999px";
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      try {
+        document.execCommand("copy");
+        showToast("تم نسخ ملخص المقترح");
+      } catch (e) {
+        showToast("تعذر النسخ تلقائياً");
+      } finally {
+        document.body.removeChild(tempArea);
+      }
+    });
+
+    // Initial render
+    renderAll();
+  </script>
+</body>
+</html>
